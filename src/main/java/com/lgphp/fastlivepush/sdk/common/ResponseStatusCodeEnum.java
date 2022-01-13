@@ -11,19 +11,34 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public enum ResponseStatusCodeEnum {
     OK(0, "success"),
-    ParameterNull(10001, "parameter is null"),
-    UserNotFound(10404, "user not exist"),
+    ParameterNull(10001, "Parameter is null"),
+    UserNotFound(10404, "User not exist"),
 
 
-    MerchantNotFound(10101, "merchant not exist"),
-    MerchantHasExist(10102, "merchant has exist"),
-    AppNotFound(10103, "app not exist"),
-    AppHasExist(10104, "app has exist"),
+    MerchantNotFound(10101, "MerchantID not exist"),
+    MerchantHasExist(10102, "MerchantID has exist"),
+    PhoneNumberHasExist(10103, "PhoneNumber has exist"),
+    AppNotFound(10108, "App not exist"),
+    AppHasExist(10104, "App has exist"),
+    ClassifierNotMatchSpChannel(10105, "Classifier Not Match SPChannel"),
+    OutofMaxClinetValue(10106, "Out of MaxClient Value"),
+    OutofMaxSpeedRate(10107, "Out of MaxSpeedRate Value"),
 
     AuthServerException(81000, "BizUser ConnAuth  exception"),
-    AuthFail(81001, "auth failed"),
-    SystemInnerError(90500, "Self Server Exception"),
+    AuthFail(81001, "Auth failed"),
+    SystemInnerError(90500, "Server Exception"),
+
+
+    // 长链接认证异常相关
+    ConnAuth_AuthKeyNotMatch(19001, "Auth Key Error"),
+    ConnAuth_MaxConnectionExceeded(19002, "Max Connection Exceeded"),
+
+
+    //DB 相关操作异常
+
+    DBUpdateFailed(50101, "DB Update Failed"),
     ;
+
 
     private int code;
     private String Message;
