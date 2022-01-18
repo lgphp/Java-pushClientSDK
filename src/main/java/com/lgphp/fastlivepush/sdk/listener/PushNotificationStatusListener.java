@@ -1,6 +1,6 @@
 package com.lgphp.fastlivepush.sdk.listener;
 
-import com.lgphp.fastlivepush.sdk.entity.NotificationAck;
+import com.lgphp.fastlivepush.sdk.entity.NotificationStatus;
 
 /**
  * @Description NotificationStatusListener
@@ -10,9 +10,15 @@ import com.lgphp.fastlivepush.sdk.entity.NotificationAck;
 public interface PushNotificationStatusListener {
 
 	/**
-	 *  通知回执
-	 * @param ack
+	 *  监听通知发送状态
+	 * @param notificationStatus
 	 */
-	public void onReceived(NotificationAck ack);
+	public void onPush(NotificationStatus notificationStatus);
+
+	/**
+	 *  监听通知回执状态
+	 * @param notificationStatus
+	 */
+	public void onSent(NotificationStatus notificationStatus);
 
 }

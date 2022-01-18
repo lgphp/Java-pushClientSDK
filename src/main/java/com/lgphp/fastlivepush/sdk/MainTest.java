@@ -3,7 +3,7 @@ package com.lgphp.fastlivepush.sdk;
 import com.alibaba.fastjson.JSONObject;
 import com.lgphp.fastlivepush.sdk.common.PushMessageLevel;
 import com.lgphp.fastlivepush.sdk.entity.AppInfo;
-import com.lgphp.fastlivepush.sdk.entity.NotificationAck;
+import com.lgphp.fastlivepush.sdk.entity.NotificationStatus;
 import com.lgphp.fastlivepush.sdk.entity.PushNotification;
 import com.lgphp.fastlivepush.sdk.listener.PushInitializedListener;
 import com.lgphp.fastlivepush.sdk.listener.PushNotificationStatusListener;
@@ -37,8 +37,11 @@ public class MainTest {
             }
         });
         fastLivePushClient.addPushNotificationStatusListener(new PushNotificationStatusListener() {
-            @Override public void onReceived(NotificationAck ack) {
-                log.info("NotificationStatusListener.onReceived----->{}", JSONObject.toJSONString(ack));
+            @Override public void onPush(NotificationStatus notificationStatus) {
+                log.info("NotificationStatusListener.onPush----->{}", JSONObject.toJSONString(notificationStatus));
+            }
+            @Override public void onSent(NotificationStatus notificationStatus) {
+                log.info("NotificationStatusListener.onSent----->{}", JSONObject.toJSONString(notificationStatus));
             }
         });
         fastLivePushClient.buildConnect();

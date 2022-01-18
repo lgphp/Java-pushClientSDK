@@ -56,7 +56,6 @@ public class FastLivePushHttpClient {
             return resData;
         }catch (Exception e) {
             log.warn("HttpClient.postByJSON {} failed: " + e, requestUri);
-            e.printStackTrace();
             return null;
         }
     }

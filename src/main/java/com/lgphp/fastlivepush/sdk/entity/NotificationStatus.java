@@ -10,7 +10,7 @@ import lombok.Data;
  */
 @Data
 @Builder
-public class NotificationAck {
+public class NotificationStatus {
 
     private String messageID;
     private String appID;
