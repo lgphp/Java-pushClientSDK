@@ -22,6 +22,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -116,7 +117,7 @@ public class BizProcessorHandler extends ChannelInboundHandlerAdapter {
             buf.writeShort(PayloadType.PushMessage.getCode());
 
             PushMessagePayload pushMessagePayload = new PushMessagePayload();
-            pushMessagePayload.setMessageID(UUID.fastUUID().toString());
+            pushMessagePayload.setMessageID(Objects.nonNull(pushNotification.getMessageId())? pushNotification.getMessageId() : UUID.fastUUID().toString());
             pushMessagePayload.setClassifier(NotificationClassfyEnmu.PUSH);
             pushMessagePayload.setFromAppID(appInfo.getAppId());
             pushMessagePayload.setFromMerchantID(appInfo.getMerchantId());

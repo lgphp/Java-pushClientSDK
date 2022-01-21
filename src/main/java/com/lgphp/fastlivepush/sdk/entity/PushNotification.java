@@ -13,6 +13,7 @@ import java.util.Map;
  */
 @Data
 public class PushNotification {
+    private String messageId;
     private PushMessageLevel messagePriority;
     private String toUID;
     private MessageBody messageBody;
