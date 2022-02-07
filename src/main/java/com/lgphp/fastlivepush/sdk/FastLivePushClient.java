@@ -155,7 +155,7 @@ public class FastLivePushClient {
             while (_reconnectCnt.get() <= 61) {
                 try {
                     if (_reconnectCnt.get() > 60) {
-                        pushInitializedListener.onInitialized(504, String.format("ReConnection of FastLivePush failed exceed: {} times",_reconnectCnt.get()));
+                        pushInitializedListener.onInitialized(504, String.format("ReConnection of FastLivePush failed exceed: %s times",_reconnectCnt.get()));
                         shutdownAllEventLoop();
                         return;
                     }

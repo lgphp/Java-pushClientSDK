@@ -69,7 +69,7 @@ public class BizProcessorHandler extends ChannelInboundHandlerAdapter {
                         new Runnable(){
                             @Override
                             public void run() {
-                                log.debug("SendHeartbeatPacket to FastLivePush");
+                                // log.debug("SendHeartbeatPacket to FastLivePush");
                                 sendHeartbeatPacket(ctx);
                             }
                         }, 0, 15, TimeUnit.SECONDS);

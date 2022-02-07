@@ -12,6 +12,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
+import java.io.IOException;
+
 /**
  * @Description HttpClient
  * @Author Jiaming.gong
@@ -35,9 +37,10 @@ public class FastLivePushHttpClient {
     }
 
     public String postByJSON(String requestUri, String requestBody) {
+        if (httpClient == null) httpClient = HttpClients.createDefault();
+        HttpPost post = new HttpPost(requestUri);
+        CloseableHttpResponse response=null;
         try {
-            HttpPost post = new HttpPost(requestUri);
-
             byte[] apiKey = KeyManager.getApiKey(KeyManager.stringKey2Byte(appInfo.getAppKey()));
             String signature = CryptoUtil.encrypt(apiKey, requestBody);
             post.setHeader("Content-Type", "application/json;charset=UTF-8");
@@ -49,14 +52,22 @@ public class FastLivePushHttpClient {
             se.setContentType("application/json");
             post.setEntity(se);
 
-            CloseableHttpResponse response = httpClient.execute(post);
+            response = httpClient.execute(post);
             HttpEntity entity = response.getEntity();
             String resData = EntityUtils.toString(response.getEntity());
-            log.debug("HttpClient.postByJSON {} success: {}", requestUri, resData);
+            // log.debug("HttpClient.postByJSON {} success: {}", requestUri, resData);
             return resData;
         }catch (Exception e) {
             log.warn("HttpClient.postByJSON {} failed: " + e, requestUri);
             return null;
+        }finally {
+            post.releaseConnection();
+            if (response!=null)
+                try {
+                    response.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
         }
     }
 }

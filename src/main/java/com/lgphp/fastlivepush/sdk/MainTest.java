@@ -31,20 +31,24 @@ public class MainTest {
 
     public static TimeInterval connectTime = new TimeInterval();
     public static TimeInterval msgTime = new TimeInterval();
+    public static TimeInterval finishTime = new TimeInterval();
     public static AtomicInteger connectedClient = new AtomicInteger(0);
     public static AtomicInteger deliveredClient = new AtomicInteger(0);
     public static AtomicInteger sentClient = new AtomicInteger(0);
 
+    private static int maxClientCnt = 10 ;
+    private static int maxMsgCnt = 100;
+
     public static void init () {
         appInfo = new AppInfo();
-        appInfo.setAppId("b4722bb12f30485582fb3e3a5c6157c6");
-        appInfo.setAppKey("NUhONBRTxPxFtFkH78P9AJ2EDUJ1EeoaFzGVoJUz5BcYFtqiag0baRw61y1ycoZaYpkxp9BC08K2F8h2II4tyQ==");
-        appInfo.setMerchantId("a127297f117c4a3fb095a15443bc96fc");
+        appInfo.setAppId("41a5b4cbce864955b8a212dbcdb51409");
+        appInfo.setAppKey("+HBMq4BRiGq8mpCbce23/fxKJho1QVAZwppDVySFdrIolMNflXHPw1PW0TFjPPysg7Z4/lllDkui8UtDUUk4iA==");
+        appInfo.setMerchantId("3dc2d214ab9e4daf9950ef657a156805");
         baseUrl = "http://77.242.242.209:8080";
     }
 
     // 创建client
-    public static List<FastLivePushClient> buildClient(int maxClientCnt) {
+    public static List<FastLivePushClient> buildClient() {
         List<FastLivePushClient> clients = new ArrayList<>(maxClientCnt);
 
         IntStream.rangeClosed(1,maxClientCnt).forEach(clientNum -> {
@@ -56,7 +60,7 @@ public class MainTest {
                         // 连接成功
                         int curr = connectedClient.incrementAndGet();
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("cost", connectTime.intervalMs(String.valueOf(clientNum))).fluentPut("connectedCnt",curr);
-                        log.info("==========>Testing connection success#{}", metricObject);
+                        log.info("Build connection success#{}", metricObject);
                     }
 
                     if (code != 200) {
@@ -78,29 +82,38 @@ public class MainTest {
                     if (statusCode == 1) {
                         // Delivery
                         int curr = deliveredClient.incrementAndGet();
+                        if (curr == maxMsgCnt * maxClientCnt) {
+                            log.info("Finished DeliveryCnt: {}, cost: {} ms", curr, finishTime.intervalMs());
+                        }
+
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("msgId",messageID).fluentPut("cost", msgTime.intervalMs(messageID)).fluentPut("deliveredCnt",curr);
-                        log.info("==========>Testing Delivery success#{}", metricObject);
+                        log.info("Received NotificationStatus==========>{}#{}", notificationStatus.getStatusMessage(), metricObject);
                     }else if (statusCode == 3) {
                         // Sent Success
                         int curr = sentClient.incrementAndGet();
+                        if (curr == maxMsgCnt * maxClientCnt) {
+                            log.info("Finished SentCnt: {}, cost: {} ms", curr, finishTime.intervalMs());
+                        }
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("msgId",messageID).fluentPut("cost", msgTime.intervalMs(messageID)).fluentPut("sentCnt",curr);
-                        log.info("==========>Testing Sent success#{}", metricObject);
+                        log.info("Received NotificationStatus==========>{}#{}", notificationStatus.getStatusMessage(), metricObject);
                     } else {
                         // failure
-                        log.warn("NotificationStatusListener.onSent----->{}", JSONObject.toJSONString(notificationStatus));
+                        log.warn("Received NotificationStatus==========>{}", JSONObject.toJSONString(notificationStatus));
                     }
                 }
             });
             connectTime.start(String.valueOf(clientNum));
             fastLivePushClient.buildConnect();
             clients.add(fastLivePushClient);
+            ThreadUtil.sleep(500);
         });
 
         return clients;
     }
 
     // 发送通知消息
-    public static void sendMsg (List<FastLivePushClient> clients, int maxMsgCnt) {
+    public static void sendMsg (List<FastLivePushClient> clients) {
+        finishTime.start();
         clients.forEach(fastLivePushClient -> {
             ThreadUtil.execAsync(() -> {
                 IntStream.rangeClosed(1, maxMsgCnt).forEach(value -> {
@@ -127,11 +140,15 @@ public class MainTest {
         }
         else{
             init();
-            int maxClientCnt = Integer.parseInt(args[0]);
-            int maxMsgCnt = Integer.parseInt(args[1]);
+            maxClientCnt = Integer.parseInt(args[0]);
+            maxMsgCnt = Integer.parseInt(args[1]);
+            if (maxClientCnt <= 0 || maxMsgCnt <= 0) {
+                log.error("请传入正确的指令：java -jar FastClient.jar [客户端实例数] [通知消息数]");
+                return;
+            }
             log.info("Start FastClient maxClientCnt: {}, maxMsgCnt: {}", maxClientCnt, maxMsgCnt);
-            List<FastLivePushClient> clients = buildClient(maxClientCnt);
-            sendMsg(clients, maxMsgCnt);
+            List<FastLivePushClient> clients = buildClient();
+            sendMsg(clients);
         }
 
 //        init();
