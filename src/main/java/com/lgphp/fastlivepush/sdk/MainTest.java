@@ -35,9 +35,10 @@ public class MainTest {
     public static AtomicInteger connectedClient = new AtomicInteger(0);
     public static AtomicInteger deliveredClient = new AtomicInteger(0);
     public static AtomicInteger sentClient = new AtomicInteger(0);
+    public static AtomicInteger sendMsg = new AtomicInteger(0);
 
     private static int maxClientCnt = 10 ;
-    private static int maxMsgCnt = 100;
+    private static int maxMsgCnt = 10000;
 
     public static void init () {
         appInfo = new AppInfo();
@@ -70,32 +71,37 @@ public class MainTest {
             });
             fastLivePushClient.addPushNotificationStatusListener(new PushNotificationStatusListener() {
                 @Override
-                public void onPush(NotificationStatus notificationStatus) {
-                    int statusCode = notificationStatus.getStatusCode();
-                    // 发送失败
-                    if (statusCode != 0) log.warn("NotificationStatusListener.onPush----->{}", JSONObject.toJSONString(notificationStatus));
+                public void onSend(int code, String message) {
+                    // 发送成功
+                    if (200 == code) {
+                        int curr = sendMsg.incrementAndGet();
+                        if (curr == maxMsgCnt * maxClientCnt)
+                            log.info("Finished SendMsg, Cnt: {}, cost: {} ms", curr, finishTime.intervalMs());
+                    } else {
+                        log.warn("SendMsg failed, code:{}, message:{}", code, message);
+                    }
                 }
                 @Override
-                public void onSent(NotificationStatus notificationStatus) {
+                public void onAck(NotificationStatus notificationStatus) {
                     int statusCode = notificationStatus.getStatusCode();
                     String messageID = notificationStatus.getMessageID();
                     if (statusCode == 1) {
                         // Delivery
                         int curr = deliveredClient.incrementAndGet();
                         if (curr == maxMsgCnt * maxClientCnt) {
-                            log.info("Finished DeliveryCnt: {}, cost: {} ms", curr, finishTime.intervalMs());
+                            log.info("Finished Delivery, Cnt: {}, cost: {} ms", curr, finishTime.intervalMs());
                         }
 
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("msgId",messageID).fluentPut("cost", msgTime.intervalMs(messageID)).fluentPut("deliveredCnt",curr);
-                        log.info("Received NotificationStatus==========>{}#{}", notificationStatus.getStatusMessage(), metricObject);
+                        //log.info("{}#{}", notificationStatus.getStatusMessage(), metricObject);
                     }else if (statusCode == 3) {
                         // Sent Success
                         int curr = sentClient.incrementAndGet();
                         if (curr == maxMsgCnt * maxClientCnt) {
-                            log.info("Finished SentCnt: {}, cost: {} ms", curr, finishTime.intervalMs());
+                            log.info("Finished SentSuccess, Cnt: {}, cost: {} ms", curr, finishTime.intervalMs());
                         }
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("msgId",messageID).fluentPut("cost", msgTime.intervalMs(messageID)).fluentPut("sentCnt",curr);
-                        log.info("Received NotificationStatus==========>{}#{}", notificationStatus.getStatusMessage(), metricObject);
+                        log.info("{}#{}", notificationStatus.getStatusMessage(), metricObject);
                     } else {
                         // failure
                         log.warn("Received NotificationStatus==========>{}", JSONObject.toJSONString(notificationStatus));
@@ -103,6 +109,8 @@ public class MainTest {
                 }
             });
             connectTime.start(String.valueOf(clientNum));
+            fastLivePushClient.sendBufferSize(10_000);
+            fastLivePushClient.sendSpeed(1000);
             fastLivePushClient.buildConnect();
             clients.add(fastLivePushClient);
             ThreadUtil.sleep(500);
@@ -114,9 +122,11 @@ public class MainTest {
     // 发送通知消息
     public static void sendMsg (List<FastLivePushClient> clients) {
         finishTime.start();
-        clients.forEach(fastLivePushClient -> {
-            ThreadUtil.execAsync(() -> {
-                IntStream.rangeClosed(1, maxMsgCnt).forEach(value -> {
+
+        for (int i=0;i<clients.size();i++) {
+            FastLivePushClient fastLivePushClient = clients.get(i);
+            int finalI = i + 1;
+            IntStream.rangeClosed(1, maxMsgCnt).forEach(value -> {
                     String messageId = UUID.fastUUID().toString();
                     msgTime.start(messageId);
                     PushNotification pushNotification = new PushNotification();
@@ -124,13 +134,12 @@ public class MainTest {
                     pushNotification.setToUID("8613810654610");
                     pushNotification.setMessagePriority(PushMessageLevel.LOW);
                     PushNotification.MessageBody messageBody = new PushNotification.MessageBody();
-                    messageBody.setTitle(String.format("%s+:%s", "标题", "测试啊啊啊啊啊啊啊啊啊"));
+                    messageBody.setTitle(String.format("%s->%s-%s+:%s", "标题", finalI, value,"测试啊啊啊啊啊啊啊啊啊"));
                     messageBody.setBody("消息体");
                     pushNotification.setMessageBody(messageBody);
                     fastLivePushClient.sendPushNotification(pushNotification);
                 });
-            });
-        });
+        }
     }
 
     public static void main(String[] args) {
@@ -152,8 +161,7 @@ public class MainTest {
         }
 
 //        init();
-//        List<FastLivePushClient> clients = buildClient(2);
-//        sendMsg(clients, 10);
-
+//        List<FastLivePushClient> clients = buildClient();
+//        sendMsg(clients);
     }
 }

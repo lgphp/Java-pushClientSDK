@@ -1,12 +1,13 @@
 package com.lgphp.fastlivepush.sdk;
 
 import cn.hutool.core.lang.UUID;
+import cn.hutool.core.thread.ThreadUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.lgphp.fastlivepush.sdk.common.PayloadType;
-import com.lgphp.fastlivepush.sdk.handler.BizProcessorHandler;
 import com.lgphp.fastlivepush.sdk.entity.AppInfo;
 import com.lgphp.fastlivepush.sdk.entity.PushGateAddress;
 import com.lgphp.fastlivepush.sdk.entity.PushNotification;
+import com.lgphp.fastlivepush.sdk.handler.BizProcessorHandler;
 import com.lgphp.fastlivepush.sdk.listener.PushInitializedListener;
 import com.lgphp.fastlivepush.sdk.listener.PushNotificationStatusListener;
 import com.lgphp.fastlivepush.sdk.payload.ConnAuthPayload;
@@ -18,10 +19,12 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.util.concurrent.DefaultEventExecutor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Objects;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,6 +68,12 @@ public class FastLivePushClient {
     private AtomicBoolean _isReconnecting = new AtomicBoolean(false);
     private SingleThreadEventLoop _reconnectLoop = new DefaultEventLoop();
 
+    // sendBuffer
+    private int sendSpeed=1;
+    private boolean _isCanSendNotification;
+    private int Max_Send_BuffSize = 10_000;
+    private ConcurrentLinkedDeque<PushNotification> _sendQueue;
+
     public void addPushInitializedListener(PushInitializedListener pushInitializedListener) {this.pushInitializedListener = pushInitializedListener; }
     public void addPushNotificationStatusListener(PushNotificationStatusListener pushNotificationStatusListener) {this.pushNotificationStatusListener = pushNotificationStatusListener; }
 
@@ -76,6 +85,7 @@ public class FastLivePushClient {
 
         this.appInfo = appInfo;
         this.baseUrl = baseUrl;
+        this._sendQueue = new ConcurrentLinkedDeque<>();
     }
 
     private PushGateAddress selectPushGateAddress() {
@@ -134,6 +144,7 @@ public class FastLivePushClient {
                     pushInitializedListener.onInitialized(200, String.format("Connection of FastLivePush: %s success",pushGateAddressString));
                     // send auth
                     sendAuthConnPacket();
+                    _isCanSendNotification = true;
                 } else {
                     pushInitializedListener.onInitialized(503, String.format("Connection of FastLivePush: %s failed",pushGateAddressString));
                     // reconnect when connect failed
@@ -170,6 +181,22 @@ public class FastLivePushClient {
         },10, TimeUnit.SECONDS);
     }
 
+    private boolean isWriteAble() {
+        if (pushChannelFuture == null || pushChannelFuture.channel() == null || !pushChannelFuture.channel().isActive())
+        {
+           reconnect();
+        }
+        return true;
+    }
+
+    public void sendBufferSize (int bufferSize) {
+        this.Max_Send_BuffSize = bufferSize;
+    }
+
+    public void sendSpeed (int sendSpeed) {
+        this.sendSpeed = 1000/sendSpeed;
+    }
+
     public void shutdownAllEventLoop() {
         log.warn("FastLivePushClient is shutdown.");
         _reconnectLoop.shutdownGracefully(2, 5, TimeUnit.SECONDS);
@@ -197,7 +224,44 @@ public class FastLivePushClient {
         }
     }
 
-    public void sendPushNotification(PushNotification pushNotification) {
-        this.bizProcessorHandler.sendPushNotification(pushNotification);
+    public void sendMessageQueueTask()
+    {
+        DefaultEventExecutor executors = new DefaultEventExecutor();
+        executors.execute(() -> {
+            while (true) {
+                if (_sendQueue.isEmpty()) continue;
+                PushNotification pushNotification = _sendQueue.poll();
+                bizProcessorHandler.sendPushNotification(pushNotification);
+                pushNotificationStatusListener.onSend(200,  String.format("%s send success", pushNotification.getMessageId()));
+                ThreadUtil.sleep(sendSpeed);
+            }
+        });
+    }
+
+
+    public void sendPushNotification(PushNotification pushNotification)
+    {
+        if (_isCanSendNotification)
+        {
+            if (isWriteAble())
+            {
+                if (_sendQueue.toArray().length > Max_Send_BuffSize)
+                {
+                    pushNotificationStatusListener.onSend(500, "send too quickly , please slowly!");
+                }
+                else
+                {
+                   _sendQueue.push(pushNotification);
+                }
+            }
+            else
+            {
+                pushNotificationStatusListener.onSend(502, "send failed, Connection han been closed");
+            }
+        }
+        else
+        {
+            pushNotificationStatusListener.onSend(503, "Did not send push message: Connection Auth haven't finished ");
+        }
     }
 }

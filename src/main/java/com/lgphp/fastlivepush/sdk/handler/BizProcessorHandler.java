@@ -16,7 +16,6 @@ import com.lgphp.fastlivepush.sdk.payload.HeartBeatPayload;
 import com.lgphp.fastlivepush.sdk.payload.PushMessagePayload;
 import com.lgphp.fastlivepush.sdk.util.KeyManager;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -69,10 +68,13 @@ public class BizProcessorHandler extends ChannelInboundHandlerAdapter {
                         new Runnable(){
                             @Override
                             public void run() {
-                                // log.debug("SendHeartbeatPacket to FastLivePush");
+                                // log.info("SendHeartbeatPacket to FastLivePush");
                                 sendHeartbeatPacket(ctx);
                             }
-                        }, 0, 15, TimeUnit.SECONDS);
+                        }, 0, 5, TimeUnit.SECONDS);
+
+                    // 启动发送任务
+                    fastLivePushClient.sendMessageQueueTask();
                 } else {
                     log.warn("Authentication of FastLivePush connection failed:{}, reason:{}", carp.getStatus().getCode(), carp.getMessage());
                     pushInitializedListener.onInitialized(403, String.format("Authentication of FastLivePush connection failed: %s",carp.getMessage()));
@@ -82,7 +84,7 @@ public class BizProcessorHandler extends ChannelInboundHandlerAdapter {
                 AckMessagePayload ackMessagePayload = (AckMessagePayload)new AckMessagePayload().unpack(ctx, byteBuf);
                 NotificationStatus notificationStatus = NotificationStatus.builder().appID(ackMessagePayload.getAppID()).messageID(ackMessagePayload.getMessageID()).userID(ackMessagePayload.getUserID())
                                                 .statusCode(ackMessagePayload.getStatusCode()).statusMessage(ackMessagePayload.getStatusMessage()).build();
-                pushNotificationStatusListener.onSent(notificationStatus);
+                pushNotificationStatusListener.onAck(notificationStatus);
             }else {
                 log.warn("Received Unknown Payload");
             }
@@ -132,19 +134,7 @@ public class BizProcessorHandler extends ChannelInboundHandlerAdapter {
             pushMessagePayload.encode(pushMessagePayload, buf, KeyManager.getMsgEncKey(keys), KeyManager.getMsgEncAesIV(keys));
             int pktLen = buf.writerIndex() - 4;
             buf.setInt(0, pktLen);
-
-            NotificationStatus notificationStatus = NotificationStatus.builder().appID(pushMessagePayload.getFromAppID()).messageID(pushMessagePayload.getMessageID()).userID(pushMessagePayload.getToUID()).build();
-            channelHandlerContext.channel().writeAndFlush(buf).addListener((ChannelFutureListener) ch -> {
-                if (ch.isSuccess()) {
-                    notificationStatus.setStatusCode(0);
-                    notificationStatus.setStatusMessage("Push success");
-//                    pushNotificationStatusListener.onPush(notificationStatus);
-                }else {
-                    notificationStatus.setStatusCode(-1);
-                    notificationStatus.setStatusMessage("Push failure");
-                }
-                pushNotificationStatusListener.onPush(notificationStatus);
-            });
+            channelHandlerContext.channel().writeAndFlush(buf);
         } else {
             buf.release();
         }

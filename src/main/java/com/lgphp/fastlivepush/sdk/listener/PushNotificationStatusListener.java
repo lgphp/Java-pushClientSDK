@@ -11,14 +11,13 @@ public interface PushNotificationStatusListener {
 
 	/**
 	 *  监听通知发送状态
-	 * @param notificationStatus
 	 */
-	public void onPush(NotificationStatus notificationStatus);
+	public void onSend(int code, String message);
 
 	/**
 	 *  监听通知回执状态
 	 * @param notificationStatus
 	 */
-	public void onSent(NotificationStatus notificationStatus);
+	public void onAck(NotificationStatus notificationStatus);
 
 }
