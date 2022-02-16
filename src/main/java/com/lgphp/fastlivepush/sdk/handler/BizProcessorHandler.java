@@ -2,7 +2,6 @@ package com.lgphp.fastlivepush.sdk.handler;
 
 import cn.hutool.core.lang.UUID;
 import com.lgphp.fastlivepush.sdk.FastLivePushClient;
-import com.lgphp.fastlivepush.sdk.common.NotificationClassfyEnmu;
 import com.lgphp.fastlivepush.sdk.common.PayloadType;
 import com.lgphp.fastlivepush.sdk.common.ResponseStatusCodeEnum;
 import com.lgphp.fastlivepush.sdk.entity.AppInfo;
@@ -120,10 +119,10 @@ public class BizProcessorHandler extends ChannelInboundHandlerAdapter {
 
             PushMessagePayload pushMessagePayload = new PushMessagePayload();
             pushMessagePayload.setMessageID(Objects.nonNull(pushNotification.getMessageId())? pushNotification.getMessageId() : UUID.fastUUID().toString());
-            pushMessagePayload.setClassifier(NotificationClassfyEnmu.PUSH);
             pushMessagePayload.setFromAppID(appInfo.getAppId());
             pushMessagePayload.setFromMerchantID(appInfo.getMerchantId());
             pushMessagePayload.setToUID(pushNotification.getToUID());
+            pushMessagePayload.setClassifier(pushNotification.getClassifier());
             pushMessagePayload.setMessagePriority(pushNotification.getMessagePriority());
 
             PushMessagePayload.MessageBody messageBody = new PushMessagePayload.MessageBody();

@@ -264,4 +264,30 @@ public class FastLivePushClient {
             pushNotificationStatusListener.onSend(503, "Did not send push message: Connection Auth haven't finished ");
         }
     }
+
+    public void sendSMSNotification(PushNotification smsMessage)
+    {
+        if (_isCanSendNotification)
+        {
+            if (isWriteAble())
+            {
+                if (_sendQueue.toArray().length > Max_Send_BuffSize)
+                {
+                    pushNotificationStatusListener.onSend(500, "send sms too quickly , please slowly!");
+                }
+                else
+                {
+                    _sendQueue.push(smsMessage);
+                }
+            }
+            else
+            {
+                pushNotificationStatusListener.onSend(502, "send sms failed, Connection han been closed");
+            }
+        }
+        else
+        {
+            pushNotificationStatusListener.onSend(503, "Did not send sms message: Connection Auth haven't finished ");
+        }
+    }
 }

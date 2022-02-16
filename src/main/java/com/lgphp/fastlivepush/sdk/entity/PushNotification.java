@@ -1,5 +1,6 @@
 package com.lgphp.fastlivepush.sdk.entity;
 
+import com.lgphp.fastlivepush.sdk.common.NotificationClassfyEnmu;
 import com.lgphp.fastlivepush.sdk.common.PushMessageLevel;
 import lombok.Data;
 
@@ -14,7 +15,9 @@ import java.util.Map;
 @Data
 public class PushNotification {
     private String messageId;
+    private NotificationClassfyEnmu classifier;
     private PushMessageLevel messagePriority;
+
     private String toUID;
     private MessageBody messageBody;
     @Data

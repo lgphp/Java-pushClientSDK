@@ -4,6 +4,7 @@ import cn.hutool.core.date.TimeInterval;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.thread.ThreadUtil;
 import com.alibaba.fastjson.JSONObject;
+import com.lgphp.fastlivepush.sdk.common.NotificationClassfyEnmu;
 import com.lgphp.fastlivepush.sdk.common.PushMessageLevel;
 import com.lgphp.fastlivepush.sdk.entity.AppInfo;
 import com.lgphp.fastlivepush.sdk.entity.NotificationStatus;
@@ -37,8 +38,8 @@ public class MainTest {
     public static AtomicInteger sentClient = new AtomicInteger(0);
     public static AtomicInteger sendMsg = new AtomicInteger(0);
 
-    private static int maxClientCnt = 10 ;
-    private static int maxMsgCnt = 10000;
+    private static int maxClientCnt = 1 ;
+    private static int maxMsgCnt = 2000;
 
     public static void init () {
         appInfo = new AppInfo();
@@ -93,13 +94,14 @@ public class MainTest {
                         }
 
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("msgId",messageID).fluentPut("cost", msgTime.intervalMs(messageID)).fluentPut("deliveredCnt",curr);
-                        //log.info("{}#{}", notificationStatus.getStatusMessage(), metricObject);
+                        log.info("{}#{}", notificationStatus.getStatusMessage(), metricObject);
                     }else if (statusCode == 3) {
                         // Sent Success
                         int curr = sentClient.incrementAndGet();
                         if (curr == maxMsgCnt * maxClientCnt) {
                             log.info("Finished SentSuccess, Cnt: {}, cost: {} ms", curr, finishTime.intervalMs());
                         }
+
                         JSONObject metricObject = new JSONObject().fluentPut("clientNum",clientNum).fluentPut("msgId",messageID).fluentPut("cost", msgTime.intervalMs(messageID)).fluentPut("sentCnt",curr);
                         log.info("{}#{}", notificationStatus.getStatusMessage(), metricObject);
                     } else {
@@ -110,7 +112,7 @@ public class MainTest {
             });
             connectTime.start(String.valueOf(clientNum));
             fastLivePushClient.sendBufferSize(10_000);
-            fastLivePushClient.sendSpeed(1000);
+            fastLivePushClient.sendSpeed(2000);
             fastLivePushClient.buildConnect();
             clients.add(fastLivePushClient);
             ThreadUtil.sleep(500);
@@ -133,12 +135,37 @@ public class MainTest {
                     pushNotification.setMessageId(messageId);
                     pushNotification.setToUID("8613810654610");
                     pushNotification.setMessagePriority(PushMessageLevel.LOW);
+                    pushNotification.setClassifier(NotificationClassfyEnmu.PUSH);
                     PushNotification.MessageBody messageBody = new PushNotification.MessageBody();
                     messageBody.setTitle(String.format("%s->%s-%s+:%s", "标题", finalI, value,"测试啊啊啊啊啊啊啊啊啊"));
                     messageBody.setBody("消息体");
                     pushNotification.setMessageBody(messageBody);
                     fastLivePushClient.sendPushNotification(pushNotification);
                 });
+        }
+    }
+
+    // 发送SMS
+    public static void sendSMSMsg (List<FastLivePushClient> clients) {
+        finishTime.start();
+
+        for (int i=0;i<clients.size();i++) {
+            FastLivePushClient fastLivePushClient = clients.get(i);
+            int finalI = i + 1;
+            IntStream.rangeClosed(1, maxMsgCnt).forEach(value -> {
+                String messageId = UUID.fastUUID().toString();
+                msgTime.start(messageId);
+                PushNotification smsNotification = new PushNotification();
+                smsNotification.setMessageId(messageId);
+                smsNotification.setToUID("8613810654610");
+                smsNotification.setMessagePriority(PushMessageLevel.LOW);
+                smsNotification.setClassifier(NotificationClassfyEnmu.SMS);
+                PushNotification.MessageBody messageBody = new PushNotification.MessageBody();
+                messageBody.setTitle(String.format("%s->%s-%s+:%s", "标题", finalI, value,"测试SMS"));
+                messageBody.setBody("短信验证码");
+                smsNotification.setMessageBody(messageBody);
+                fastLivePushClient.sendSMSNotification(smsNotification);
+            });
         }
     }
 
@@ -163,5 +190,6 @@ public class MainTest {
 //        init();
 //        List<FastLivePushClient> clients = buildClient();
 //        sendMsg(clients);
+//        sendSMSMsg(clients);
     }
 }
